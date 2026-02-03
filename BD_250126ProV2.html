@@ -1,0 +1,2155 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8" />
+  <title>Vũ PKT_2026_Pro</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+
+  <script src="https://unpkg.com/shpjs@latest/dist/shp.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
+  <style>
+    :root {
+      --primary-white: #ffffff;
+      --bg-light: #f8f9fa;
+      --border-color: #dee2e6;
+      --text-main: #343a40;
+      --accent-orange: #fd7e14;
+      --accent-blue: #0d6efd;
+      --accent-green: #198754;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-light);
+      overflow: hidden;
+      color: var(--text-main);
+    }
+
+    #map {
+      height: 100vh;
+      width: 100%;
+      z-index: 1;
+      background: #eee;
+    }
+
+    #top-panel {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: var(--primary-white);
+      padding: 12px 15px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      border-radius: 8px;
+      border: 1px solid var(--border-color);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    }
+
+    .input-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    input[type="number"],
+    input[type="text"],
+    input[type="file"],
+    select {
+      padding: 8px 12px;
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+
+    .auto-detected {
+      background-color: #d4edda;
+      border-color: #28a745 !important;
+      color: #155724;
+      font-weight: bold;
+    }
+
+    #input-vn2000,
+    #input-wgs84 {
+      width: 140px;
+    }
+
+    .file-box {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .file-box label {
+      font-size: 10px;
+      font-weight: bold;
+      color: #666;
+    }
+
+    #soto,
+    #sotocu,
+    #sothua {
+      width: 50px;
+    }
+
+    #tenchu {
+      width: 100px;
+    }
+
+    .layer-controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px;
+      border-left: 1px solid #ddd;
+    }
+
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button {
+      padding: 9px 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 12px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: 0.3s;
+    }
+
+    .btn-search {
+      background: var(--accent-orange);
+      color: white;
+    }
+
+    .btn-locate {
+      background: var(--accent-blue);
+      color: white;
+      transition: background 0.3s;
+    }
+
+    .btn-locate.tracking-active {
+      background: var(--accent-green) !important;
+      box-shadow: 0 0 10px rgba(25, 135, 84, 0.8);
+    }
+
+    .btn-clear {
+      background: #e9ecef;
+      color: #495057;
+    }
+
+    .btn-direction {
+      background: var(--accent-green);
+      color: white;
+    }
+
+    .btn-export {
+      background: #6f42c1;
+      color: white;
+    }
+
+    #info-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 1000;
+      background: var(--primary-white);
+      padding: 12px 20px;
+      display: none;
+      overflow-x: auto;
+      border-top: 1px solid var(--border-color);
+      box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .info-container {
+      display: flex;
+      gap: 25px;
+      align-items: center;
+      min-width: max-content;
+    }
+
+    .info-item {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .info-label {
+      font-size: 11px;
+      color: #6c757d;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .info-value {
+      font-size: 15px;
+      color: var(--text-main);
+      font-weight: 700;
+    }
+
+    .edge-label-inner {
+      background: var(--primary-white);
+      border: 1.5px solid #dc3545;
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #dc3545;
+      white-space: nowrap;
+    }
+
+    .vertex-label {
+      background: #0d6efd;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 10px;
+      font-weight: bold;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+      border: 1px solid white;
+    }
+
+    #loading-status {
+      position: fixed;
+      top: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text-main);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 30px;
+      font-size: 13px;
+      display: none;
+      z-index: 2000;
+    }
+
+    #btn-locate-fixed {
+      position: absolute;
+      bottom: 320px;
+      right: 10px;
+      z-index: 1000;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      border: 2px solid white;
+      width: 40px;
+      height: 40px;
+      padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 8px;
+    }
+
+    .leaflet-right .leaflet-control-zoom {
+      margin-bottom: 160px !important;
+      border: 2px solid white;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .file-row {
+      display: flex;
+      gap: 10px;
+    }
+
+    @media (max-width: 768px) {
+      .file-row {
+        width: 100%;
+      }
+
+      .file-box {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .file-box input,
+      .file-box select {
+        width: 100%;
+        box-sizing: border-box;
+      }
+
+      #sel-province {
+        font-size: 11px;
+        padding: 6px 5px;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        overflow: hidden;
+        max-width: 100%;
+      }
+
+      #top-panel {
+        gap: 8px;
+      }
+
+      .layer-controls {
+        border-left: none;
+        border-top: 1px solid #ddd;
+        padding-top: 5px;
+        width: 100%;
+      }
+    }
+
+    /* Custom Google Maps Style Layer Control */
+    .map-style-control {
+      position: absolute;
+      bottom: 80px;
+      left: 10px;
+      z-index: 1000;
+      font-family: Roboto, Arial, sans-serif;
+    }
+
+    .style-btn-trigger {
+      width: 60px;
+      height: 60px;
+      background: white;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid white;
+      transition: 0.2s;
+      overflow: hidden;
+    }
+
+    .style-btn-trigger:hover {
+      border-color: #333;
+    }
+
+    .style-btn-trigger img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .style-panel {
+      position: absolute;
+      bottom: 0;
+      left: 70px;
+      background: white;
+      padding: 10px;
+      border-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+      display: none;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 300px;
+    }
+
+    .map-type-item {
+      cursor: pointer;
+      border-radius: 4px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      text-align: center;
+    }
+
+    .map-type-item.active {
+      border-color: #333;
+    }
+
+    .map-type-item:hover {
+      border-color: #ccc;
+    }
+
+    .map-type-image {
+      width: 100%;
+      height: 60px;
+      background-color: #eee;
+      border-radius: 4px;
+      margin-bottom: 5px;
+      background-size: cover;
+      background-position: center;
+    }
+
+    .map-type-label {
+      font-size: 11px;
+      color: #333;
+      font-weight: 500;
+    }
+
+    .show-panel {
+      display: grid !important;
+    }
+
+    /* Styles for Measure Controls */
+    .btn-measure {
+      background: #ffc107;
+      color: #212529;
+    }
+
+    .measure-active {
+      background: #28a745 !important;
+      color: white !important;
+    }
+
+    .measure-edge-label-inner {
+      background: var(--primary-white);
+      border: 1.5px solid #ff0000;
+      border-radius: 4px;
+      padding: 2px 5px;
+      font-size: 11px;
+      font-weight: 800;
+      color: #ff0000;
+      white-space: nowrap;
+    }
+
+    .measure-area-label-inner {
+      background: rgba(255, 255, 255, 0.8);
+      border: 1px solid #ff0000;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #ff0000;
+    }
+
+    .leaflet-popup-content-wrapper {
+      border-radius: 8px;
+      padding: 0;
+    }
+
+    .leaflet-popup-content {
+      margin: 10px 15px;
+      line-height: 1.4;
+    }
+
+    #split-panel {
+      display: none;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 20px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      z-index: 1001;
+      max-width: 80%;
+      max-height: 80%;
+      overflow: auto;
+    }
+
+    #split-panel table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    #split-panel th,
+    #split-panel td {
+      border: 1px solid #ddd;
+      padding: 8px;
+      text-align: center;
+    }
+
+    #split-panel th {
+      background: #f2f2f2;
+    }
+
+    #split-panel button {
+      padding: 5px 10px;
+    }
+
+    #confirm-split {
+      margin-top: 10px;
+      background: var(--accent-green);
+      color: white;
+    }
+
+    .vertex-icon.clickable {
+      cursor: pointer !important;
+      z-index: 1000;
+    }
+
+    .vertex-label.selected {
+      background: #ff0000 !important;
+      transform: scale(1.2);
+    }
+
+    #split-instruction {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #0d6efd;
+      text-align: center;
+    }
+
+    .split-btn {
+      margin: 5px;
+      padding: 8px 12px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      color: white;
+      font-weight: 600;
+    }
+
+    .btn-split-action {
+      background: #fd7e14;
+    }
+
+    .btn-split-finish {
+      background: #198754;
+    }
+
+    .btn-split-cancel {
+      background: #6c757d;
+    }
+
+    .area-label {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #333;
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 13px;
+      font-weight: bold;
+      color: #333;
+      text-align: center;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Style cho nút lấy GPS */
+    .btn-gps-measure {
+      background: #17a2b8;
+      color: white;
+      font-weight: bold;
+      border: 2px solid white;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+
+    /* Hiệu ứng pulse cho chấm định vị */
+    .gps-marker-pulse {
+      background-color: #0d6efd;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 0 0 rgba(13, 110, 253, 0.4);
+      animation: pulse-ring 2s infinite;
+    }
+    @keyframes pulse-ring {
+      0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(13, 110, 253, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+    }
+
+    /* CSS CHO BẢNG HIỂN THỊ SAI SỐ GPS */
+    #gps-accuracy-display {
+      position: absolute;
+      bottom: 370px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: bold;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      transition: all 0.3s ease;
+      display: none;
+      min-width: 120px;
+      text-align: center;
+    }
+
+    .accuracy-good {
+      color: #155724;
+      border: 2px solid #198754;
+    }
+
+    /* CSS Khi sai số trên 5m (Cảnh báo nhấp nháy đỏ) */
+    .accuracy-bad {
+      color: #721c24;
+      background-color: #f8d7da !important;
+      border: 2px solid #dc3545;
+      animation: flash-warning 1s infinite;
+    }
+
+    @keyframes flash-warning {
+      0% { box-shadow: 0 0 5px #dc3545; }
+      50% { box-shadow: 0 0 15px #dc3545; }
+      100% { box-shadow: 0 0 5px #dc3545; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="loading-status">🛰️ Đang xử lý dữ liệu...</div>
+
+  <div id="gps-accuracy-display">Sai số: 0.00 m</div>
+
+  <button id="btn-locate-fixed" class="btn-locate"
+    onclick="toggleLiveLocation()" title="Vị trí của tôi"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+      viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+      stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"></circle>
+      <path d="M12 2v3m0 14v3M2 12h3m14 0h3"></path>
+    </svg></button>
+  <div id="top-panel">
+    <div class="file-row">
+      <div class="file-box"><label>ĐỊA CHÍNH (Zip/Shp/Json)</label><input type="file" id="file-dc"
+          accept=".geojson,.json,.zip,.shp"></div>
+      <div class="file-box"><label>QUY HOẠCH (Zip/Shp/Json)</label><input type="file" id="file-qh"
+          accept=".geojson,.json,.zip,.shp"></div>
+    </div>
+    <div class="input-group" style="align-items: flex-end;">
+      <div class="file-box"><label id="lbl-province">TỈNH/TP (KTT)</label><select id="sel-province"></select></div>
+      <div class="file-box"><label title="Đảo ngược trục X và Y">Đảo X-Y</label><input type="checkbox" id="chk-swap-xy"
+          onchange="reprojectCurrentData()"></div><button class="btn-search" onclick="searchParcel()">🔍
+        TÌM</button><button class="btn-clear" onclick="clearSearch()">✖</button>
+    </div>
+    <div class="input-group"><input type="number" id="soto" placeholder="Tờ"><input type="number" id="sothua"
+        placeholder="Thửa"><input type="text" id="sotocu" placeholder="Tờ cũ"><input type="text" id="tenchu"
+        placeholder="Tên chủ"></div><button id="btn-toggle-coord" class="btn-search" onclick="toggleCoordPanel()"
+      style="padding: 9px 12px; min-width: 40px; background: var(--accent-green);">▶ Tìm tọa độ</button>
+    <div id="coord-panel" style="display:none; flex-direction:column; gap:5px;">
+      <div class="input-group"><input type="text" id="input-vn2000" placeholder="VN2000: Y, X (m)"><button
+          class="btn-search" onclick="searchVN2000()">🔍 VN</button></div>
+      <div class="input-group"><input type="text" id="input-wgs84"
+          placeholder="WGS84: Lat, Lng (hỗ trợ link GMaps, DMS)"><button class="btn-search" onclick="searchWGS84()">🔍
+          WGS</button></div>
+    </div>
+    <div class="layer-controls"><label class="checkbox-group"><input type="checkbox" id="chk-dc" checked
+          onchange="toggleLayer('dc')">Hiện ĐC</label><label class="checkbox-group"><input type="checkbox" id="chk-qh"
+          checked onchange="toggleLayer('qh')">Hiện QH</label><label class="checkbox-group"><input type="checkbox"
+          id="chk-edges" checked onchange="toggleEdgesAndVertices()">Hiện Cạnh</label></div>
+
+      <button id="btn-measure-distance" class="btn-measure" onclick="toggleMeasure('distance')">📏 Đo KC</button>
+      <button id="btn-measure-area" class="btn-measure" onclick="toggleMeasure('area')">📐 Đo DT</button>
+      <button id="btn-add-gps-point" class="btn-measure btn-gps-measure" onclick="addGPSMeasurePoint()" style="display: none;">📍 Thêm GPS</button>
+
+      <button class="btn-export" onclick="exportMeasureCoords()" style="display: none;" id="btn-export-measure">📥 Xuất TĐ
+      Đo</button><button class="btn-clear" onclick="clearMeasure()">✖ Xóa Đo</button>
+  </div><button id="btn-toggle-top" class="btn-search" onclick="toggleTopPanel()"
+    style="position: absolute; top: 10px; right: 10px; z-index: 1000; padding: 9px 12px; min-width: 40px; background: var(--accent-green); color: white;">◀</button>
+  <div class="map-style-control" onmouseenter="showLayerPanel()" onmouseleave="hideLayerPanel()">
+    <div class="style-btn-trigger"><img
+        src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjMzMzIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBvbHlnb24gcG9pbnRzPSIxMiAyIDIgNyAxMiAxMiAyMiA3IDEyIDIiLz48cG9seWxpbmUgcG9pbnRzPSIyIDEyIDEyIDE3IDIyIDEyIi8+PHBvbHlnb24gcG9pbnRzPSIyIDEyIDEyIDE3IDIyIDEyIi8+PC9zdmc+"
+        alt="Layers" style="padding: 10px;"></div>
+    <div class="style-panel" id="style-panel">
+      <div class="map-type-item active" onclick="setBaseMap('Google Hybrid', this)">
+        <div class="map-type-image" style="background-image: url('https://mt1.google.com/vt/lyrs=y&x=0&y=0&z=0');">
+        </div>
+        <div class="map-type-label">Vệ tinh (Hybrid)</div>
+      </div>
+      <div class="map-type-item" onclick="setBaseMap('Google Satellite', this)">
+        <div class="map-type-image" style="background-image: url('https://mt1.google.com/vt/lyrs=s&x=0&y=0&z=0');">
+        </div>
+        <div class="map-type-label">Vệ tinh (Sạch)</div>
+      </div>
+      <div class="map-type-item" onclick="setBaseMap('Google Streets', this)">
+        <div class="map-type-image" style="background-image: url('https://mt1.google.com/vt/lyrs=m&x=0&y=0&z=0');">
+        </div>
+        <div class="map-type-label">Đường phố</div>
+      </div>
+      <div class="map-type-item" onclick="setBaseMap('Google Terrain', this)">
+        <div class="map-type-image" style="background-image: url('https://mt1.google.com/vt/lyrs=p&x=0&y=0&z=0');">
+        </div>
+        <div class="map-type-label">Địa hình</div>
+      </div>
+      <div class="map-type-item" onclick="setBaseMap('Esri World Imagery', this)">
+        <div class="map-type-image"
+          style="background-image: url('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/0/0/0');">
+        </div>
+        <div class="map-type-label">Esri Sat</div>
+      </div>
+      <div class="map-type-item" onclick="setBaseMap('Esri World Topo', this)">
+        <div class="map-type-image"
+          style="background-image: url('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/0/0/0');">
+        </div>
+        <div class="map-type-label">Esri Topo</div>
+      </div>
+      <div class="map-type-item" onclick="setBaseMap('Esri Hybrid', this)">
+        <div class="map-type-image"
+          style="background-image: url('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/0/0/0');">
+          <div
+            style="position:absolute;top:0;left:0;right:0;bottom:0;background-image:url('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/0/0/0');pointer-events:none;">
+          </div>
+        </div>
+        <div class="map-type-label">Hỗn hợp Hình ảnh</div>
+      </div>
+    </div>
+  </div>
+  <div id="info-bar">
+    <div class="info-container">
+      <div id="info-content" style="display: flex; gap: 20px;"></div>
+      <div id="direction-btn-container" style="display: flex; gap: 10px;"></div>
+      <div id="measure-info" style="display: none; margin-left: 20px;">
+        <div class="info-item"><span class="info-label">Khoảng Cách</span><span class="info-value"
+            id="measure-distance-value">0 m</span></div>
+        <div class="info-item"><span class="info-label">Diện Tích</span><span class="info-value"
+            id="measure-area-value">0 m²</span></div>
+      </div>
+    </div>
+  </div>
+  <div id="split-panel">
+    <h3>Sơ Đồ Thửa Đất - Tách Thửa</h3>
+    <div id="split-instruction" style="font-weight:bold;color:#0d6efd;margin-bottom:10px;text-align:center;">Click vào
+      đỉnh đầu tiên của cạnh muốn chia.</div>
+    <div id="split-controls" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;"><button
+        class="split-btn btn-split-action" onclick="activateSplitSelection()" id="btn-select-split-line">✂ Chọn đường
+        tách (0/2)</button><button class="split-btn btn-split-finish" onclick="executeSplit()">⚡ Tách
+        Thửa</button><button class="split-btn btn-split-finish" onclick="finishSplitProcess()">✅ Hoàn
+        tất</button><button class="split-btn btn-split-cancel" onclick="closeSplitPanel()">❌ Đóng</button></div>
+  </div>
+  <div id="map"></div>
+  <script>
+    const map = L.map('map', {
+      maxZoom: 22, zoomControl: false
+    }).setView([12.667, 108.038], 15);
+
+    L.control.zoom({
+      position: 'bottomright'
+    }).addTo(map);
+
+    // --- XỬ LÝ CHUỘT PHẢI (CONTEXT MENU) ---
+    map.on('contextmenu', function (e) {
+      var lat = e.latlng.lat;
+      var lng = e.latlng.lng;
+
+      var popupContent = `<div style="text-align: center; padding: 5px;"><div style="font-size: 11px; color: #666; margin-bottom: 5px;">${lat.toFixed(6)}, ${lng.toFixed(6)}</div><button class="btn-direction" style="width: 100%; justify-content: center;" onclick="openGoogleMapsDir(${lat}, ${lng})">🚗 Chỉ đường tới đây</button></div>`;
+
+      L.popup().setLatLng(e.latlng).setContent(popupContent).openOn(map);
+    });
+
+    function openGoogleMapsDir(lat, lng) {
+      window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`, '_blank');
+      map.closePopup();
+    }
+
+    // --- CÁC LỚP NỀN (BASE MAPS) ---
+    const googleHybrid = L.tileLayer('https://{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+      maxZoom: 22, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: 'Google Hybrid'
+    });
+
+    const googleSat = L.tileLayer('https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+      maxZoom: 22, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: 'Google Satellite'
+    });
+
+    const googleStreets = L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+      maxZoom: 22, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: 'Google Streets'
+    });
+
+    const googleTerrain = L.tileLayer('https://{s}.google.com/vt/lyrs=p&x={x}&y={y}&z={z}', {
+      maxZoom: 22, subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
+      attribution: 'Google Terrain'
+    });
+
+    const esriWorld = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 22, maxNativeZoom: 18, zIndex: 1, attribution: 'Tiles © Esri'
+    });
+
+    const esriTopo = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 22, maxNativeZoom: 19, attribution: 'Tiles © Esri'
+    });
+
+    const esriReference = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 22, maxNativeZoom: 18, zIndex: 3, attribution: 'Tiles © Esri'
+    });
+
+    const esriTransportation = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}', {
+      maxZoom: 22, maxNativeZoom: 18, zIndex: 2, attribution: 'Tiles © Esri'
+    });
+
+    const esriHybrid = L.layerGroup([esriWorld, esriTransportation, esriReference]);
+
+    googleHybrid.addTo(map);
+
+    const baseMaps = {
+      "Google Hybrid": googleHybrid,
+      "Google Satellite": googleSat,
+      "Google Streets": googleStreets,
+      "Google Terrain": googleTerrain,
+      "Esri World Imagery": esriWorld,
+      "Esri World Topo": esriTopo,
+      "Esri Hybrid": esriHybrid
+    };
+
+    function setBaseMap(name, el) {
+      Object.keys(baseMaps).forEach(k => map.removeLayer(baseMaps[k]));
+      if (baseMaps[name]) baseMaps[name].addTo(map);
+      document.querySelectorAll('.map-type-item').forEach(d => d.classList.remove('active'));
+      if (el) el.classList.add('active');
+    }
+
+    let dcLayer = null, qhLayer = null, highlightLayer = null;
+    let dcData = null, qhData = null, currentSelectedFeature = null;
+    let rawDC = null, rawQH = null;
+
+    let edgeLabelsLayer = L.layerGroup().addTo(map);
+    let vertexLayer = L.layerGroup().addTo(map);
+    let measureLabelsLayer = L.layerGroup().addTo(map);
+    let currentKTT = 108.5;
+
+    // --- Cập nhật mapping để hiển thị Tờ Cũ ---
+    const fieldMapping = {
+      "SHBANDO": "Tờ",
+      "SHTHUA": "Thửa",
+      "SOTOCU": "Tờ cũ",
+      "DIENTICH": "Diện tích (m²)",
+      "KHLOAIDAT": "Loại đất",
+      "TENCHU": "Tên chủ"
+    };
+
+    const provinces = [
+      { name: "Điện Biên + Lai Châu", ktt: 103.00 },
+      { name: "Sơn La", ktt: 104.00 },
+      { name: "Cà Mau + Kiên Giang", ktt: 104.50 },
+      { name: "An Giang + Lào Cai + Nghệ An + Phú Thọ + Yên Bái", ktt: 104.75 },
+      { name: "Bạc Liêu + Cần Thơ + Đồng Tháp + Hà Nam + Hà Nội + Hậu Giang + Ninh Bình + Thanh Hóa + Vĩnh Phúc", ktt: 105.00 },
+      { name: "Bắc Ninh + Cao Bằng + Bến Tre + Bình Dương + Hải Dương + Hà Giang + Hà Tĩnh + Hưng Yên + Nam Định + Sóc Trăng + Tây Ninh + Thái Bình + Trà Vinh + Vĩnh Long", ktt: 105.50 },
+      { name: "Hải Phòng + TP. Hồ Chí Minh + Long An + Tiền Giang", ktt: 105.75 },
+      { name: "Hòa Bình + Quảng Bình + Tuyên Quang", ktt: 106.00 },
+      { name: "Bình Phước + Quảng Trị", ktt: 106.25 },
+      { name: "Bắc Kạn + Thái Nguyên", ktt: 106.50 },
+      { name: "Kon Tum", ktt: 107.50 },
+      { name: "Bắc Giang + Thừa Thiên Huế", ktt: 107.00 },
+      { name: "Lạng Sơn", ktt: 107.25 },
+      { name: "Bà Rịa - Vũng Tàu + Đà Nẵng + Đồng Nai + Lâm Đồng + Quảng Nam + Quảng Ninh", ktt: 107.75 },
+      { name: "Bình Định + Khánh Hòa + Ninh Thuận", ktt: 108.25 },
+      { name: "Quảng Ngãi", ktt: 108.00 },
+      { name: "Bình Thuận + Đắk Lắk + Đắk Nông + Gia Lai + Phú Yên", ktt: 108.50 }
+    ].sort((a, b) => a.name.localeCompare(b.name));
+
+    const selProv = document.getElementById('sel-province');
+
+    provinces.forEach(p => {
+      let displayName = p.name;
+      if (displayName.length > 35) {
+        displayName = displayName.substring(0, 35) + "...";
+      }
+
+      let opt = new Option(`${displayName} (${p.ktt})`, p.ktt);
+      opt.title = p.name; 
+
+      if (p.name.includes("Đắk Lắk")) opt.selected = true;
+      selProv.add(opt);
+    });
+
+    selProv.onchange = function () {
+      selProv.classList.remove('auto-detected');
+      document.getElementById('lbl-province').innerText = "TỈNH/TP (KTT)";
+      updateVN2000(parseFloat(this.value));
+      reprojectCurrentData();
+    };
+
+    function updateVN2000(ktt) {
+      currentKTT = ktt;
+      const p7 = "+towgs84=-191.90441429,-39.30318279,-111.45032835,0.00928836,-0.01975479,0.00427372,0.252906278";
+      const def = `+proj=tmerc +lat_0=0 +lon_0=${ktt} +k=0.9999 +x_0=500000 +y_0=0 +ellps=WGS84 ${p7} +units=m +no_defs`;
+      proj4.defs("VN2000_Current", def);
+    }
+
+    updateVN2000(currentKTT);
+
+    // --- XỬ LÝ ĐỌC FILE (ĐƯỢC CẬP NHẬT TỪ BẢN 230126) ---
+    document.getElementById('file-dc').onchange = e => handleFile(e.target.files[0], 'dc');
+    document.getElementById('file-qh').onchange = e => handleFile(e.target.files[0], 'qh');
+
+    async function handleFile(file, type) {
+      if (!file) return;
+      const fileName = file.name.toLowerCase();
+      showLoading("📂 Đang phân tích file...");
+
+      try {
+        if (fileName.endsWith('.zip')) {
+          const zip = await JSZip.loadAsync(file);
+          const prjFileName = Object.keys(zip.files).find(n => n.toLowerCase().endsWith('.prj'));
+
+          if (prjFileName) {
+            const prjText = await zip.files[prjFileName].async("string");
+            const match = prjText.match(/PARAMETER\[\s*"(?:Central_Meridian|central_meridian)"\s*,\s*([\d.]+)\s*\]/i);
+
+            if (match && match[1]) {
+              const detectedKTT = parseFloat(match[1]);
+              console.log("Tìm thấy KTT từ PRJ:", detectedKTT);
+
+              updateUIWithDetectedKTT(detectedKTT);
+              zip.remove(prjFileName);
+
+              const newZipContent = await zip.generateAsync({ type: "arraybuffer" });
+              processShapefileBuffer(newZipContent, type, file.name);
+              return; 
+            }
+          }
+
+          const buffer = await file.arrayBuffer();
+          processShapefileBuffer(buffer, type, file.name);
+
+        } else if (fileName.endsWith('.shp')) {
+             const buffer = await file.arrayBuffer();
+             processShapefileBuffer(buffer, type, file.name);
+        } else {
+          const text = await file.text();
+          try {
+            const json = JSON.parse(text);
+            finishLoad(json, type);
+          } catch (e) { alert("Lỗi JSON không hợp lệ!"); hideLoading(); }
+        }
+      } catch (err) {
+        console.error(err);
+        alert("Lỗi đọc file: " + err.message);
+        hideLoading();
+      }
+    }
+
+    function updateUIWithDetectedKTT(ktt) {
+      const sel = document.getElementById('sel-province');
+      let found = false;
+
+      for (let i = 0; i < sel.options.length; i++) {
+        if (parseFloat(sel.options[i].value) === ktt) {
+          sel.selectedIndex = i;
+          found = true;
+          break;
+        }
+      }
+
+      if (!found) {
+        let opt = new Option(`KTT Tùy chỉnh (${ktt})`, ktt);
+        sel.add(opt);
+        sel.selectedIndex = sel.options.length - 1;
+      }
+
+      updateVN2000(ktt);
+
+      sel.classList.add('auto-detected');
+      document.getElementById('lbl-province').innerText = "ĐÃ TỰ NHẬN DIỆN KTT ✅";
+    }
+
+    function processShapefileBuffer(buffer, type, fname) {
+      shp(buffer).then(function (geojson) {
+        showLoading("🔄 Đang chuyển hệ tọa độ...");
+
+        setTimeout(() => {
+          finishLoad(geojson, type);
+          alert(`Đã tải xong: ${fname}\n(Hệ tọa độ đã được xử lý tự động)`);
+        }, 100);
+
+      }).catch(err => {
+        alert("Lỗi shp.js: " + err);
+        hideLoading();
+      });
+    }
+
+    function finishLoad(json, type) {
+      if (json.ktt) {
+        console.log("Phát hiện KTT từ file GeoJSON:", json.ktt);
+        updateUIWithDetectedKTT(json.ktt);
+      }
+
+      const raw = JSON.parse(JSON.stringify(json));
+      if (type === 'dc') rawDC = raw; else rawQH = raw;
+
+      convertGeoJSON_VN2000_to_WGS84(json);
+
+      if (type === 'dc') {
+        dcData = json; renderDC(json);
+      } else {
+        qhData = json; renderQH(json);
+      }
+
+      hideLoading();
+    }
+
+    function convertGeoJSON_VN2000_to_WGS84(geojson) {
+      const isSwap = document.getElementById('chk-swap-xy').checked;
+
+      const transformPoint = (coord) => {
+        if (Math.abs(coord[0]) < 200 && Math.abs(coord[1]) < 200) return coord;
+
+        let x = coord[0];
+        let y = coord[1];
+
+        if (isSwap) {
+          let temp = x; x = y; y = temp;
+        }
+
+        const wgs = proj4(proj4.defs('VN2000_Current'), proj4.defs('EPSG:4326'), [x, y]);
+        coord[0] = wgs[0];
+        coord[1] = wgs[1];
+        return coord;
+      };
+
+      const traverseCoords = (coords) => {
+        if (typeof coords[0] === 'number') transformPoint(coords);
+        else if (Array.isArray(coords)) coords.forEach(c => traverseCoords(c));
+      };
+
+      const features = Array.isArray(geojson) ? geojson : (geojson.features || [geojson]);
+
+      features.forEach(f => {
+        if (f.geometry && f.geometry.coordinates) traverseCoords(f.geometry.coordinates);
+      });
+    }
+
+    function reprojectCurrentData() {
+      if (!rawDC && !rawQH) return;
+      showLoading("♻️ Đang tính toán lại...");
+
+      setTimeout(() => {
+        if (rawDC) {
+          const newData = JSON.parse(JSON.stringify(rawDC));
+          convertGeoJSON_VN2000_to_WGS84(newData);
+          dcData = newData;
+          renderDC(newData);
+        }
+
+        if (rawQH) {
+          const newData = JSON.parse(JSON.stringify(rawQH));
+          convertGeoJSON_VN2000_to_WGS84(newData);
+          qhData = newData;
+          renderQH(newData);
+        }
+
+        hideLoading();
+      }, 100);
+    }
+
+    function renderDC(data) {
+      if (dcLayer) map.removeLayer(dcLayer);
+
+      dcLayer = L.geoJSON(data, {
+        style: {
+          color: "#ffeb3b", weight: 1.5, fillOpacity: 0.1
+        },
+        onEachFeature: (f, l) => l.on('click', e => {
+          processSelection(f, l); L.DomEvent.stopPropagation(e);
+        })
+      }).addTo(map);
+      map.fitBounds(dcLayer.getBounds());
+    }
+
+    function renderQH(data) {
+      if (qhLayer) map.removeLayer(qhLayer);
+
+      qhLayer = L.geoJSON(data, {
+        style: f => ({
+          color: "#333", weight: 0.5, fillColor: f.properties.fill || "#000", fillOpacity: f.properties["fill-opacity"] || 0.5
+        }),
+        interactive: false
+      }).addTo(map);
+      if (qhLayer.getBounds().isValid()) map.fitBounds(qhLayer.getBounds());
+    }
+
+    function toggleLayer(type) {
+      if (type === 'dc' && dcLayer) document.getElementById('chk-dc').checked ? map.addLayer(dcLayer) : map.removeLayer(dcLayer);
+      if (type === 'qh' && qhLayer) document.getElementById('chk-qh').checked ? map.addLayer(qhLayer) : map.removeLayer(qhLayer);
+    }
+
+    function processSelection(feature, layer) {
+      currentSelectedFeature = feature;
+      if (highlightLayer) map.removeLayer(highlightLayer);
+
+      highlightLayer = L.geoJSON(feature, {
+        style: {
+          color: "#dc3545", weight: 4, fillColor: "#0d6efd", fillOpacity: 0.2
+        }
+      }).addTo(map);
+      const center = layer.getBounds().getCenter();
+      showInfoHorizontal(feature.properties, center.lat, center.lng);
+
+      if (document.getElementById('chk-edges').checked) {
+        updateEdges();
+        const orderedPts = getOrderedVertices(feature);
+        drawVertices(orderedPts);
+      }
+
+      map.fitBounds(layer.getBounds(), {
+        padding: [100, 100]
+      });
+    }
+
+    function updateEdges() {
+      edgeLabelsLayer.clearLayers();
+      if (!currentSelectedFeature) return;
+      let coords = (currentSelectedFeature.geometry.type === "Polygon") ? currentSelectedFeature.geometry.coordinates[0] : currentSelectedFeature.geometry.coordinates[0][0];
+
+      for (let i = 0; i < coords.length - 1; i++) {
+        let p1 = L.latLng(coords[i][1], coords[i][0]), p2 = L.latLng(coords[i + 1][1], coords[i + 1][0]);
+        let dist = p1.distanceTo(p2);
+
+        if (dist > 0.3) {
+          let mid = [(p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2];
+          let rotation = -Math.atan2(p2.lat - p1.lat, p2.lng - p1.lng) * 180 / Math.PI;
+          if (rotation > 90) rotation -= 180; if (rotation < -90) rotation += 180;
+
+          L.marker(mid, {
+            icon: L.divIcon({
+              className: 'edge-label-container', html: `<div class="edge-label-inner" style="transform: rotate(${rotation}deg);">${dist.toFixed(2)} m</div>`, iconSize: [40, 20]
+            }), interactive: false
+          }).addTo(edgeLabelsLayer);
+        }
+      }
+    }
+
+    function showInfoHorizontal(props, lat, lng) {
+      const bar = document.getElementById('info-bar'), content = document.getElementById('info-content'), btnContainer = document.getElementById('direction-btn-container');
+      bar.style.display = 'block';
+      let html = "";
+
+      Object.keys(props).forEach(key => {
+        let label = fieldMapping[key] || key;
+        let val = props[key];
+        if (key === "SHBANDO" || key === "SHTHUA") val = Math.floor(Number(val));
+        else if (key === "DIENTICH") val = Number(val).toFixed(1);
+
+        html += `<div class="info-item"><span class="info-label">${label}</span><span class="info-value">${val || "-"}</span></div>`;
+      });
+      content.innerHTML = html;
+      btnContainer.innerHTML = `<button class="btn-direction" onclick="openGoogleMapsDir(${lat}, ${lng})" >🚗 CHỈ ĐƯỜNG</button> <button class="btn-export" onclick="exportCoords()" >📥 XUẤT TỌA ĐỘ</button> <button class="btn-export" onclick="exportPDF()" >📄 XUẤT PDF</button> <button class="btn-measure" onclick="toggleSplitMode()" >✂ TÁCH THỬA</button>`;
+    }
+
+    map.on('click', function (e) {
+      if (measureMode) {
+        addMeasurePoint(e.latlng);
+        return;
+      }
+
+      if (splitMode) {
+        addSplitPoint(e.latlng);
+        return;
+      }
+
+      const vn2000 = proj4(proj4.defs('EPSG:4326'), proj4.defs('VN2000_Current'), [e.latlng.lng, e.latlng.lat]);
+
+      L.popup().setLatLng(e.latlng).setContent(`<div style="text-align:center; font-size:13px;"><strong style="color:#0d6efd">📍 TỌA ĐỘ VỊ TRÍ</strong><br><div style="margin-top:5px; text-align:left;"><b>WGS84:</b> ${e.latlng.lat.toFixed(6)}, ${e.latlng.lng.toFixed(6)}<br><b>VN2000 (KTT ${currentKTT}):</b><br>X: ${vn2000[1].toFixed(3)} | Y: ${vn2000[0].toFixed(3)}</div></div>`).openOn(map);
+    });
+
+    map.on('dblclick', function (e) {
+      if (measureMode) {
+        finishMeasure();
+      }
+
+      if (splitMode) {
+        finishSplit();
+      }
+    });
+
+    function getOrderedVertices(feature) {
+      let coords = (feature.geometry.type === "Polygon") ? feature.geometry.coordinates[0] : feature.geometry.coordinates[0][0];
+      let pts = coords.slice(0, -1).reverse();
+
+      let vnPts = pts.map(p => {
+        let xy = proj4(proj4.defs('EPSG:4326'), proj4.defs('VN2000_Current'), [p[0], p[1]]);
+
+        return {
+          x: xy[1], // Northing
+          y: xy[0], // Easting
+          lng: p[0],
+          lat: p[1]
+        };
+      });
+
+      let maxIdx = 0;
+
+      vnPts.forEach((p, i) => {
+        if (p.x > vnPts[maxIdx].x) maxIdx = i;
+      });
+
+      return [...vnPts.slice(maxIdx), ...vnPts.slice(0, maxIdx)];
+    }
+
+    function drawVertices(orderedPts) {
+      vertexLayer.clearLayers();
+
+      orderedPts.forEach((pt, idx) => {
+        const stt = idx + 1;
+
+        const marker = L.marker([pt.lat, pt.lng], {
+          icon: L.divIcon({
+
+            className: 'vertex-icon clickable',
+            html: `<div class="vertex-label" id="v-label-${idx}">${stt}</div>`,
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+          }),
+          interactive: true
+        }).addTo(vertexLayer);
+
+        marker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          onVertexClick(idx);
+        });
+      });
+
+      // Draw split points if any
+      splitPoints.forEach((pt, i) => {
+        const marker = L.marker([pt.lat, pt.lng], {
+          icon: L.divIcon({
+
+            className: 'vertex-icon clickable',
+            html: `<div class="vertex-label" style="background:#dc3545; border:2px solid yellow;">P${i + 1}</div>`,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          }),
+          interactive: true
+        }).addTo(vertexLayer);
+
+        marker.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+          onSplitPointClick(pt, i);
+        });
+      });
+    }
+
+    function exportCoords() {
+      if (!currentSelectedFeature) return;
+
+      const ordered = getOrderedVertices(currentSelectedFeature);
+
+      let content = "STT\tX(m)\tY(m)\tZ(m)\n";
+
+      ordered.forEach((pt, idx) => {
+        content += `${idx + 1}\t${pt.x.toFixed(3)}\t${pt.y.toFixed(3)}\t0.000\n`;
+      });
+
+      const blob = new Blob([content], {
+        type: "text/plain"
+      });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+
+      link.download = `ToaDo_To_${currentSelectedFeature.properties.SHBANDO}_Thua_${currentSelectedFeature.properties.SHTHUA}.txt`;
+      link.click();
+    }
+
+    // --- TÍNH NĂNG XUẤT PDF ---
+    function exportPDF() {
+      if (!currentSelectedFeature) return alert("Vui lòng chọn thửa đất trước!");
+
+      const {
+        jsPDF
+      } = window.jspdf;
+      const doc = new jsPDF();
+
+      const props = currentSelectedFeature.properties;
+      doc.setFontSize(16);
+
+      doc.text("SƠ ĐỒ THỬA ĐẤT", 105, 20, {
+        align: 'center'
+      });
+
+      doc.setFontSize(12);
+
+      doc.text(`Tờ: ${props.SHBANDO || '-'}`, 20, 40);
+      doc.text(`Thửa: ${props.SHTHUA || '-'}`, 20, 50);
+      doc.text(`Diện tích: ${props.DIENTICH ? Number(props.DIENTICH).toFixed(1) : '-'} m²`, 20, 60);
+      doc.text(`Tên chủ: ${props.TENCHU || '-'}`, 20, 70);
+
+      const ordered = getOrderedVertices(currentSelectedFeature);
+      const tableData = ordered.map((pt, idx) => [idx + 1, pt.x.toFixed(3), pt.y.toFixed(3), '0.000']);
+
+      doc.autoTable({
+        head: [['STT', 'X (m)', 'Y (m)', 'Z (m)']],
+        body: tableData,
+        startY: 80,
+        theme: 'grid'
+      });
+
+      doc.save(`SoDo_To_${props.SHBANDO}_Thua_${props.SHTHUA}.pdf`);
+    }
+
+    function searchParcel() {
+      const s = document.getElementById('soto').value.trim();
+      const sc = document.getElementById('sotocu').value.trim();
+      const t = document.getElementById('sothua').value.trim();
+      const n = document.getElementById('tenchu').value.trim().toLowerCase();
+
+      if (!dcLayer) return alert("Vui lòng nạp file Địa chính!");
+      let found = null;
+
+      dcLayer.eachLayer(l => {
+        const p = l.feature.properties;
+
+        const matchNew = (s && t && p.SHBANDO == s && p.SHTHUA == t);
+        const matchOld = (sc && t && p.SOTOCU == sc && p.SHTHUA == t);
+        const matchName = (n && String(p.TENCHU || "").toLowerCase().includes(n));
+
+        if (matchNew || matchOld || matchName) {
+          found = l;
+        }
+      });
+      found ? processSelection(found.feature, found) : alert("Không tìm thấy!");
+    }
+
+    function clearSearch() {
+      ['soto', 'sotocu', 'sothua', 'tenchu', 'input-vn2000', 'input-wgs84'].forEach(id => document.getElementById(id).value = '');
+      if (highlightLayer) map.removeLayer(highlightLayer);
+      if (searchMarkerFn) map.removeLayer(searchMarkerFn);
+      edgeLabelsLayer.clearLayers();
+      vertexLayer.clearLayers();
+      document.getElementById('info-bar').style.display = 'none';
+      currentSelectedFeature = null;
+    }
+
+    let searchMarkerFn = null;
+
+    function createSearchMarker(latlng, popupContent) {
+      if (searchMarkerFn) map.removeLayer(searchMarkerFn);
+      searchMarkerFn = L.marker(latlng).addTo(map).bindPopup(popupContent).openPopup();
+      return searchMarkerFn;
+    }
+
+    function searchVN2000() {
+      const val = document.getElementById('input-vn2000').value.trim();
+      if (!val) return alert("Nhập tọa độ VN2000: Y X (hoặc Y, X)!");
+
+      let parts = val.split(/[, ; \s]+/).map(Number).filter(n => !isNaN(n));
+      if (parts.length < 2) return alert("Cần nhập đủ X và Y!");
+
+      let vX = parts[0];
+      let vY = parts[1];
+
+      let e = vX;
+      let n = vY;
+
+      if (vX > 800000 && vY < 800000) {
+        e = vY; n = vX;
+      } else if (vY > 800000 && vX < 800000) {
+        e = vX; n = vY;
+      }
+
+      try {
+        const wgs = proj4(proj4.defs('VN2000_Current'), proj4.defs('EPSG:4326'), [e, n]);
+        if (isNaN(wgs[0]) || isNaN(wgs[1])) throw "NaN";
+
+        map.flyTo([wgs[1], wgs[0]], 18);
+
+        createSearchMarker([wgs[1], wgs[0]], `<div style='text-align:center'><b>VN2000 Found</b><br>X: ${n}<br>Y: ${e}</div>`);
+      } catch (err) {
+        alert("Lỗi chuyển đổi tọa độ! Kiểm tra lại số liệu.");
+      }
+    }
+
+    function searchWGS84() {
+      const val = document.getElementById('input-wgs84').value.trim();
+      if (!val) return alert("Nhập Lat, Lng hoặc định dạng hỗ trợ!");
+
+      let lat, lng;
+
+      if (val.includes('maps.app.goo.gl') || val.includes('google.com/maps')) {
+        const match = val.match(/@(-?[\d., ]+), (-?[\d., ]+)/);
+
+        if (match) {
+          lat = parseFloat(match[1].replace(',', '.'));
+          lng = parseFloat(match[2].replace(',', '.'));
+        } else {
+          return alert("Link Google Maps không chứa tọa độ hợp lệ!");
+        }
+      } else if (val.includes('°')) {
+        return alert("Vui lòng nhập định dạng thập phân (Lat, Lng) để chính xác nhất.");
+      } else {
+        const coordRegex = /([\d., ]+)[\s, ; ]+([\d., ]+)/;
+        const match = val.match(coordRegex);
+
+        if (match) {
+          lat = parseFloat(match[1].replace(',', '.'));
+          lng = parseFloat(match[2].replace(',', '.'));
+        } else {
+          return alert("Định dạng tọa độ không hợp lệ!");
+        }
+      }
+
+      map.flyTo([lat, lng], 18);
+
+      const vn = proj4(proj4.defs('EPSG:4326'), proj4.defs('VN2000_Current'), [lng, lat]);
+
+      createSearchMarker([lat, lng], `<div style='text-align:center'><b>WGS84 Location</b><br>Lat: ${lat}<br>Lng: ${lng}<br>VN2000: ${vn[1].toFixed(2)}, ${vn[0].toFixed(2)}</div>`);
+    }
+
+    // --- CẬP NHẬT: TÍNH NĂNG ĐỊNH VỊ LIVE VÀ HIỂN THỊ SAI SỐ GPS ---
+    let liveLocationMarker = null;
+    let isTrackingLive = false;
+
+    function toggleLiveLocation() {
+      const btn = document.getElementById('btn-locate-fixed');
+      const accDisplay = document.getElementById('gps-accuracy-display');
+
+      // Nếu đang bật -> Tắt đi
+      if (isTrackingLive) {
+        map.stopLocate();
+        if (liveLocationMarker) {
+          map.removeLayer(liveLocationMarker);
+          liveLocationMarker = null;
+        }
+        isTrackingLive = false;
+        btn.classList.remove('tracking-active');
+        accDisplay.style.display = 'none'; // Ẩn bảng sai số
+        hideLoading();
+        return;
+      }
+
+      // Bắt đầu bật theo dõi Live
+      showLoading("Đang kết nối GPS trực tiếp...");
+      isTrackingLive = true;
+      btn.classList.add('tracking-active');
+
+      map.locate({
+        setView: true, 
+        maxZoom: 19, 
+        enableHighAccuracy: true,
+        watch: true // Lắng nghe sự thay đổi vị trí liên tục
+      });
+    }
+
+    map.on('locationfound', e => {
+      if (!isTrackingLive) return;
+      hideLoading();
+
+      // Lấy giá trị sai số GPS (tính bằng mét)
+      const accuracy = e.accuracy;
+
+      // Cập nhật lên màn hình (Bảng sai số)
+      const accDisplay = document.getElementById('gps-accuracy-display');
+      accDisplay.style.display = 'block';
+
+      // Cảnh báo nếu sai số > 5m
+      if (accuracy > 5) {
+        accDisplay.className = "accuracy-bad";
+        accDisplay.innerHTML = `⚠️ Sai số: ${accuracy.toFixed(2)} m<br><span style="font-size:10px;">Không nên đo!</span>`;
+      } else {
+        accDisplay.className = "accuracy-good";
+        accDisplay.innerHTML = `✅ Sai số: ${accuracy.toFixed(2)} m`;
+      }
+
+      // Cập nhật vị trí chấm xanh
+      if (liveLocationMarker) {
+        liveLocationMarker.setLatLng(e.latlng);
+      } else {
+        liveLocationMarker = L.marker(e.latlng, {
+          icon: L.divIcon({
+            className: 'gps-marker-pulse',
+            iconSize: [16, 16],
+            iconAnchor: [8, 8]
+          }),
+          interactive: false
+        }).addTo(map);
+      }
+
+      // Fit bản đồ trôi theo vị trí mới
+      map.setView(e.latlng);
+    });
+
+    map.on('locationerror', e => {
+      if (isTrackingLive) {
+        alert("Lỗi tín hiệu GPS: " + e.message);
+        toggleLiveLocation(); // Tắt nếu lỗi
+      }
+    });
+
+    function showLoading(msg) {
+      const el = document.getElementById('loading-status');
+      el.innerText = msg;
+      el.style.display = 'block';
+    }
+
+    function hideLoading() {
+      document.getElementById('loading-status').style.display = 'none';
+    }
+
+    let stylePanelTimeout;
+
+    function showLayerPanel() {
+      clearTimeout(stylePanelTimeout);
+      document.getElementById('style-panel').classList.add('show-panel');
+    }
+
+    function hideLayerPanel() {
+      stylePanelTimeout = setTimeout(() => {
+        document.getElementById('style-panel').classList.remove('show-panel');
+      }, 300);
+    }
+
+    function toggleCoordPanel() {
+      const panel = document.getElementById('coord-panel');
+      const btn = document.getElementById('btn-toggle-coord');
+
+      if (panel.style.display === 'none') {
+        panel.style.display = 'flex';
+        btn.innerHTML = '◀ Tìm tọa độ';
+      } else {
+        panel.style.display = 'none';
+        btn.innerHTML = '▶ Tìm tọa độ';
+      }
+    }
+
+    function toggleTopPanel() {
+      const panel = document.getElementById('top-panel');
+      const btn = document.getElementById('btn-toggle-top');
+
+      if (panel.style.display === 'none') {
+        panel.style.display = 'flex';
+        btn.innerHTML = '◀';
+      } else {
+        panel.style.display = 'none';
+        btn.innerHTML = '▶';
+      }
+    }
+
+    function toggleEdgesAndVertices() {
+      const checked = document.getElementById('chk-edges').checked;
+
+      if (checked) {
+        map.addLayer(edgeLabelsLayer);
+        map.addLayer(vertexLayer);
+
+        if (currentSelectedFeature) {
+          updateEdges();
+          const orderedPts = getOrderedVertices(currentSelectedFeature);
+          drawVertices(orderedPts);
+        }
+      } else {
+        map.removeLayer(edgeLabelsLayer);
+        map.removeLayer(vertexLayer);
+      }
+    }
+
+    let measureMode = null;
+    let measurePoints = [];
+    let measureLayer = L.layerGroup().addTo(map);
+    let measureDistance = 0;
+    let measureArea = 0;
+
+    function toggleMeasure(type) {
+      if (measureMode === type) {
+        finishMeasure();
+        return;
+      }
+
+      clearMeasure();
+      measureMode = type;
+      document.getElementById('btn-measure-distance').classList.remove('measure-active');
+      document.getElementById('btn-measure-area').classList.remove('measure-active');
+
+      if (type === 'distance') {
+        document.getElementById('btn-measure-distance').classList.add('measure-active');
+      } else if (type === 'area') {
+        document.getElementById('btn-measure-area').classList.add('measure-active');
+      }
+
+      // HIỂN THỊ NÚT GPS VÀ KẾT QUẢ ĐO
+      document.getElementById('btn-add-gps-point').style.display = 'inline-flex';
+
+      document.getElementById('info-bar').style.display = 'block'; 
+      document.getElementById('measure-info').style.display = 'flex';
+      document.getElementById('btn-export-measure').style.display = 'inline-flex';
+
+      alert(`Chế độ đo ${type === 'distance' ? 'khoảng cách' : 'diện tích'} đã bật. Bật "Vị trí" và nhấn "Thêm GPS" để đo, double click để kết thúc.`);
+    }
+
+    // --- CẬP NHẬT: THÊM ĐIỂM ĐO TRỰC TIẾP TỪ VỊ TRÍ LIVE ---
+    function addGPSMeasurePoint() {
+      if (!measureMode) {
+        alert("Vui lòng bật chế độ Đo KC hoặc Đo DT trước!");
+        return;
+      }
+
+      // Nếu đang bật Live Tracking, lấy vị trí tức thì từ chấm xanh
+      if (isTrackingLive && liveLocationMarker) {
+        const latlng = liveLocationMarker.getLatLng();
+        addMeasurePoint(latlng);
+        // Không cần flyTo vì Live Tracking đã tự động fit (setView) theo người dùng rồi
+      } else {
+        // Nếu chưa bật Live Tracking, gọi GPS 1 lần
+        showLoading("📍 Đang lấy vị trí GPS...");
+        navigator.geolocation.getCurrentPosition(function (position) {
+          hideLoading();
+          const latlng = L.latLng(position.coords.latitude, position.coords.longitude);
+          addMeasurePoint(latlng);
+          map.flyTo(latlng, 19);
+        }, function (err) {
+          hideLoading(); alert("Không lấy được GPS!");
+        }, { enableHighAccuracy: true });
+      }
+    }
+    // ---------------------------------------------------
+
+    function addMeasurePoint(latlng) {
+      measurePoints.push(latlng);
+
+      L.circleMarker(latlng, {
+        radius: 5, color: '#ff0000'
+      }).addTo(measureLayer);
+      updateMeasure();
+    }
+
+    function updateMeasure() {
+      measureLayer.clearLayers();
+      measureLabelsLayer.clearLayers();
+
+      measurePoints.forEach(pt => L.circleMarker(pt, {
+        radius: 5, color: '#ff0000'
+      }).addTo(measureLayer));
+
+      if (measurePoints.length < 2) return;
+
+      let isClosed = measureMode === 'area' && measurePoints.length >= 3 && measurePoints[0].equals(measurePoints[measurePoints.length - 1]);
+
+      let drawPoints = [...measurePoints];
+
+      if (measureMode === 'area' && isClosed) {
+        L.polygon(drawPoints, {
+          color: '#ff0000', fillColor: '#ff0000', fillOpacity: 0.3
+        }).addTo(measureLayer);
+      } else if (measureMode === 'area') {
+        L.polygon(drawPoints, {
+          color: '#ff0000', fillColor: '#ff0000', fillOpacity: 0.3
+        }).addTo(measureLayer);
+      } else {
+        L.polyline(drawPoints, {
+          color: '#ff0000'
+        }).addTo(measureLayer);
+      }
+
+      measureDistance = 0;
+
+      for (let i = 0; i < measurePoints.length - 1; i++) {
+        let dist = measurePoints[i].distanceTo(measurePoints[i + 1]);
+        measureDistance += dist;
+
+        let p1 = measurePoints[i], p2 = measurePoints[i + 1];
+
+        if (dist > 0.3) {
+          let mid = [(p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2];
+          let rotation = -Math.atan2(p2.lat - p1.lat, p2.lng - p1.lng) * 180 / Math.PI;
+          if (rotation > 90) rotation -= 180; if (rotation < -90) rotation += 180;
+
+          L.marker(mid, {
+            icon: L.divIcon({
+              className: 'measure-edge-label-container', html: `<div class="measure-edge-label-inner" style="transform: rotate(${rotation}deg);">${dist.toFixed(2)} m</div>`, iconSize: [40, 20]
+            }), interactive: false
+          }).addTo(measureLabelsLayer);
+        }
+      }
+
+      document.getElementById('measure-distance-value').innerText = `${measureDistance.toFixed(2)} m`;
+
+      measureArea = 0;
+
+      if (measureMode === 'area' && measurePoints.length >= 3) {
+        let calcPoints = isClosed ? measurePoints.slice(0, -1) : measurePoints;
+        const projected = calcPoints.map(pt => proj4(proj4.defs('EPSG:4326'), proj4.defs('VN2000_Current'), [pt.lng, pt.lat]));
+        let sum = 0;
+
+        for (let i = 0; i < projected.length; i++) {
+          const j = (i + 1) % projected.length;
+          sum += (projected[i][0] * projected[j][1]) - (projected[j][0] * projected[i][1]);
+        }
+
+        measureArea = Math.abs(sum / 2);
+
+        document.getElementById('measure-area-value').innerText = `${measureArea.toFixed(2)} m²`;
+
+        if (isClosed || measurePoints.length >= 3) {
+          const bounds = L.latLngBounds(calcPoints);
+          const center = bounds.getCenter();
+
+          L.marker(center, {
+            icon: L.divIcon({
+              className: 'measure-area-label-container', html: `<div class="measure-area-label-inner">${measureArea.toFixed(2)} m²</div>`, iconSize: [80, 30]
+            }), interactive: false
+          }).addTo(measureLabelsLayer);
+        }
+
+        if (!isClosed && measurePoints.length >= 3) {
+          let p1 = measurePoints[measurePoints.length - 1];
+          let p2 = measurePoints[0];
+          let dist = p1.distanceTo(p2);
+
+          if (dist > 0.3) {
+            let mid = [(p1.lat + p2.lat) / 2, (p1.lng + p2.lng) / 2];
+            let rotation = -Math.atan2(p2.lat - p1.lat, p2.lng - p1.lng) * 180 / Math.PI;
+            if (rotation > 90) rotation -= 180; if (rotation < -90) rotation += 180;
+
+            L.marker(mid, {
+              icon: L.divIcon({
+                className: 'measure-edge-label-container', html: `<div class="measure-edge-label-inner" style="transform: rotate(${rotation}deg);">${dist.toFixed(2)} m</div>`, iconSize: [40, 20]
+              }), interactive: false
+            }).addTo(measureLabelsLayer);
+          }
+        }
+      } else {
+        document.getElementById('measure-area-value').innerText = '0 m²';
+      }
+    }
+
+    function finishMeasure() {
+      if (measureMode === 'area' && measurePoints.length >= 3 && !measurePoints[0].equals(measurePoints[measurePoints.length - 1])) {
+        measurePoints.push(measurePoints[0]);
+      }
+
+      updateMeasure();
+      measureMode = null;
+      document.getElementById('btn-measure-distance').classList.remove('measure-active');
+      document.getElementById('btn-measure-area').classList.remove('measure-active');
+      document.getElementById('btn-add-gps-point').style.display = 'none'; // Ẩn nút GPS khi đo xong
+    }
+
+    function clearMeasure() {
+      measurePoints = [];
+      measureLayer.clearLayers();
+      measureLabelsLayer.clearLayers();
+      measureDistance = 0;
+      measureArea = 0;
+      document.getElementById('measure-distance-value').innerText = '0 m';
+      document.getElementById('measure-area-value').innerText = '0 m²';
+      document.getElementById('measure-info').style.display = 'none';
+      document.getElementById('btn-export-measure').style.display = 'none';
+      measureMode = null;
+      document.getElementById('btn-measure-distance').classList.remove('measure-active');
+      document.getElementById('btn-measure-area').classList.remove('measure-active');
+
+      document.getElementById('btn-add-gps-point').style.display = 'none'; // ẨN NÚT GPS
+      if (!currentSelectedFeature) document.getElementById('info-bar').style.display = 'none';
+    }
+
+    function exportMeasureCoords() {
+      if (measurePoints.length < 2) return alert("Cần ít nhất 2 điểm để xuất!");
+
+      let ordered = measurePoints.map(pt => {
+        let xy = proj4(proj4.defs('EPSG:4326'), proj4.defs('VN2000_Current'), [pt.lng, pt.lat]);
+
+        return {
+          x: xy[1], y: xy[0]
+        };
+      });
+
+      let content = "STT\tX(m)\tY(m)\tZ(m)\n";
+
+      ordered.forEach((pt, idx) => {
+        content += `${idx + 1}\t${pt.x.toFixed(3)}\t${pt.y.toFixed(3)}\t0.000\n`;
+      });
+
+      const blob = new Blob([content], {
+        type: "text/plain"
+      });
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+
+      link.download = `ToaDo_Do_${measureMode || 'Vung'}.txt`;
+      link.click();
+    }
+
+    // --- TÍNH NĂNG TÁCH THỬA (INTERACTIVE) ---
+    let splitMode = false;
+    let splitStep = 0; // 0: Idle, 1: Selected 1st vertex
+    let splitFirstVertexIdx = -1;
+    let splitPoints = []; // List of newly created split points {lat, lng, x, y}
+    let selectionForSplit = []; // Points selected for the cut line
+    let orderedPts = [];
+
+    // Layers
+    let splitLayer = L.layerGroup().addTo(map);
+
+    function toggleSplitMode() {
+      if (!currentSelectedFeature) return alert("Vui lòng chọn thửa đất trước!");
+
+      if (splitMode) {
+        closeSplitPanel();
+        return;
+      }
+
+      splitMode = true;
+      resetSplitState();
+
+      // Update Ordered Points & Draw
+      refreshVertexDrawing();
+
+      // Auto-zoom to feature
+      if (highlightLayer) {
+        map.fitBounds(highlightLayer.getBounds(), { padding: [50, 50] });
+      }
+
+      // Draw Area Label for initial parcel
+      drawAreaLabel(currentSelectedFeature);
+
+      document.getElementById('split-panel').style.display = 'block';
+      updateSplitInstruction("Click vào đỉnh đầu tiên của cạnh muốn chia.");
+    }
+
+    function refreshVertexDrawing() {
+      orderedPts = getOrderedVertices(currentSelectedFeature);
+      drawVertices(orderedPts);
+      updateEdges();
+      // Ensure area label is updated if geometry changes
+      if (splitMode && splitPolygons.length === 0) {
+        drawAreaLabel(currentSelectedFeature);
+      }
+    }
+
+    function onSplitPointClick(pt, idx) {
+      if (!splitMode || !isSelectingSplitLine) return;
+    }
+
+    var onVertexClick = function (idx) {
+      if (!splitMode) return;
+
+      if (isSelectingSplitLine) {
+        // Handle selection for CUT
+
+        // Toggle selection
+        const existingIdx = selectionForSplit.findIndex(i => i === idx);
+
+        if (existingIdx >= 0) {
+          selectionForSplit.splice(existingIdx, 1);
+          highlightVertex(idx, false);
+        } else {
+          if (selectionForSplit.length >= 2) {
+            alert("Chỉ được chọn 2 điểm!");
+            return;
+          }
+
+          selectionForSplit.push(idx);
+          highlightVertex(idx, true);
+        }
+
+        updateSplitBtn();
+
+        if (selectionForSplit.length === 2) {
+          updateSplitInstruction("Đã chọn đủ 2 điểm. Nhấn 'Tách Thửa' để thực hiện.");
+        }
+
+        return;
+      }
+
+      // Creation Logic (existing)
+      if (splitStep === 0) {
+        splitFirstVertexIdx = idx;
+        splitStep = 1;
+        highlightVertex(idx, true);
+
+        updateSplitInstruction(`Đã chọn đỉnh ${idx + 1}. Hãy click đỉnh thứ 2 của cạnh.`);
+      } else if (splitStep === 1) {
+        const v1 = splitFirstVertexIdx;
+        const v2 = idx;
+
+        if (v1 === v2) {
+          resetSplitState(); return;
+        }
+
+        const len = orderedPts.length;
+        const isNext = (v2 === (v1 + 1) % len);
+        const isPrev = (v1 === (v2 + 1) % len);
+
+        if (!isNext && !isPrev) {
+          alert("Vui lòng chọn 2 đỉnh liền kề!");
+          resetSplitState();
+          return;
+        }
+
+        const p1 = orderedPts[v1];
+        const p2 = orderedPts[v2];
+
+        const totalDist = turf.distance([p1.lng, p1.lat], [p2.lng, p2.lat], {
+          units: 'meters'
+        });
+
+        const dStr = prompt(`Nhập khoảng cách từ đỉnh ${v1 + 1} (Cạnh dài ${totalDist.toFixed(2)} m):`);
+
+        if (dStr === null) {
+          resetSplitState(); return;
+        }
+
+        const dist = parseFloat(dStr);
+
+        if (isNaN(dist) || dist <= 0 || dist >= totalDist) {
+          alert("Khoảng cách không hợp lệ!");
+          return;
+        }
+
+        const line = turf.lineString([[p1.lng, p1.lat], [p2.lng, p2.lat]]);
+
+        const newPtGeo = turf.along(line, dist, {
+          units: 'meters'
+        });
+        insertNewVertex(newPtGeo.geometry.coordinates[0], newPtGeo.geometry.coordinates[1], v1, v2);
+        resetSplitState();
+        updateSplitInstruction("Đã thêm điểm. Chọn 2 điểm để tách hoặc tạo thêm điểm.");
+      }
+    };
+
+    function insertNewVertex(lng, lat, v1Idx, v2Idx) {
+      const xy = proj4(proj4.defs('EPSG:4326'), proj4.defs('VN2000_Current'), [lng, lat]);
+
+      const newPt = {
+        lng, lat, x: xy[1], y: xy[0]
+      };
+
+      const len = orderedPts.length;
+      // Rebuild polygon ring
+      let newRing = [];
+
+      for (let i = 0; i < len; i++) {
+        newRing.push([orderedPts[i].lng, orderedPts[i].lat]);
+        if (i === v1Idx && (v2Idx === (v1Idx + 1) % len)) {
+          newRing.push([lng, lat]);
+        }
+        if (i === v2Idx && (v1Idx === (i + 1) % len)) {
+          newRing.push([lng, lat]);
+        }
+      }
+
+      newRing.push(newRing[0]); // Close
+      currentSelectedFeature.geometry.coordinates = [newRing];
+
+      // Re-render
+      if (highlightLayer) map.removeLayer(highlightLayer);
+
+      highlightLayer = L.geoJSON(currentSelectedFeature, {
+        style: {
+          color: "#dc3545", weight: 4, fillColor: "#0d6efd", fillOpacity: 0.2
+        }
+      }).addTo(map);
+
+      refreshVertexDrawing();
+    }
+
+    function resetSplitState() {
+      splitStep = 0;
+      splitFirstVertexIdx = -1;
+      highlightVertex(-1, false);
+      selectionForSplit = [];
+      updateSplitBtn();
+    }
+
+    function updateSplitInstruction(msg) {
+      document.getElementById('split-instruction').innerText = msg;
+    }
+
+    function highlightVertex(idx, show) {
+      document.querySelectorAll('.vertex-label').forEach(el => el.classList.remove('selected'));
+
+      if (show && idx >= 0) {
+        const el = document.getElementById(`v-label-${idx}`);
+        if (el) el.classList.add('selected');
+      }
+    }
+
+    let areaLabelLayer = L.layerGroup().addTo(map);
+
+    function drawAreaLabel(feature, customText) {
+      if (!splitMode) return;
+      if (!feature) return;
+
+      // If it's the initial call (not split results), clear previous
+      if (splitPolygons.length === 0) areaLabelLayer.clearLayers();
+
+      const area = feature.properties.DIENTICH || turf.area(feature);
+      const text = customText || `Diện tích: ${area.toFixed(1)} m²`;
+
+      const center = turf.centerOfMass(feature);
+      const latlng = [center.geometry.coordinates[1], center.geometry.coordinates[0]];
+
+      L.marker(latlng, {
+        icon: L.divIcon({
+          className: 'area-label-container',
+          html: `<div class="area-label">${text}</div>`,
+          iconSize: [120, 30],
+          iconAnchor: [60, 15]
+        }),
+        interactive: false
+      }).addTo(areaLabelLayer);
+    }
+
+    let isSelectingSplitLine = false;
+
+    function activateSplitSelection() {
+      isSelectingSplitLine = true;
+      resetSplitState();
+      updateSplitInstruction("Hãy click chọn 2 điểm (đỉnh hoặc điểm mới tạo) để làm đường chia cắt.");
+    }
+
+    function updateSplitBtn() {
+      const btn = document.getElementById('btn-select-split-line');
+
+      if (btn) {
+        btn.innerText = `✂ Chọn đường tách (${selectionForSplit.length}/2)`;
+        if (isSelectingSplitLine) btn.style.border = "2px solid #fff";
+        else btn.style.border = "none";
+      }
+    }
+
+    function executeSplit() {
+      if (selectionForSplit.length !== 2) return alert("Cần chọn đúng 2 điểm để tách!");
+
+      const idx1 = selectionForSplit[0];
+      const idx2 = selectionForSplit[1];
+
+      const ring = orderedPts.map(p => [p.lng, p.lat]);
+
+      let i1 = Math.min(idx1, idx2);
+      let i2 = Math.max(idx1, idx2);
+
+      // Check adjacent (invalid split)
+      if (Math.abs(i1 - i2) < 2 || Math.abs(i1 - i2) > ring.length - 2) {
+        // It's possible to split adjacent if we have complex polygon, but usually not for simple convex.
+      }
+
+      const p1_pts = ring.slice(i1, i2 + 1);
+      p1_pts.push(ring[i1]); // Close poly 1
+
+      // Poly 2: from i2 to end, plus 0 to i1, plus i2 to close
+      const p2_pts = ring.slice(i2).concat(ring.slice(0, i1 + 1));
+      p2_pts.push(ring[i2]);
+
+      let poly1 = turf.polygon([p1_pts]);
+      let poly2 = turf.polygon([p2_pts]);
+
+      const area1 = turf.area(poly1);
+      const area2 = turf.area(poly2);
+
+      const f1 = JSON.parse(JSON.stringify(currentSelectedFeature));
+      f1.geometry.coordinates = [p1_pts];
+      f1.properties.DIENTICH = area1;
+
+      const f2 = JSON.parse(JSON.stringify(currentSelectedFeature));
+      f2.geometry.coordinates = [p2_pts];
+      f2.properties.DIENTICH = area2;
+
+      // Clear main highlight to show split results
+      if (highlightLayer) highlightLayer.clearLayers();
+      splitLayer.clearLayers();
+      areaLabelLayer.clearLayers();
+
+      // Helper to add interactive result layer
+      const addResultLayer = (feature, color, label) => {
+        const layer = L.geoJSON(feature, {
+          style: { color: color, weight: 2, fillOpacity: 0.3 }
+        }).addTo(splitLayer);
+
+        // Add click to select this for NEXT split
+        layer.on('click', (e) => {
+          L.DomEvent.stopPropagation(e);
+
+          // Highlight interaction
+          layer.setStyle({ fillOpacity: 0.6 });
+          setTimeout(() => layer.setStyle({ fillOpacity: 0.3 }), 200);
+
+          const conf = confirm(`Bạn muốn chọn thửa ${label} để tiếp tục tách?`);
+          if (conf) {
+            currentSelectedFeature = feature;
+            splitPolygons = []; // Reset split results tracking as we started new cycle
+            splitLayer.clearLayers();
+            areaLabelLayer.clearLayers();
+
+            // Restore main view
+            highlightLayer = L.geoJSON(currentSelectedFeature, {
+              style: { color: "#dc3545", weight: 4, fillColor: "#0d6efd", fillOpacity: 0.2 }
+            }).addTo(map);
+
+            refreshVertexDrawing();
+            updateSplitInstruction("Đã chọn thửa mới. Hãy tiếp tục chọn cạnh hoặc đường tách.");
+          }
+        });
+
+        drawAreaLabel(feature, `<b>${label}</b><br>${feature.properties.DIENTICH.toFixed(1)} m²`);
+        return feature;
+      };
+
+      const res1 = addResultLayer(f1, 'green', '1 (Xanh)');
+      const res2 = addResultLayer(f2, 'purple', '2 (Tím)');
+
+      updateSplitInstruction("Đã tách xong! Click vào thửa màu xanh/tím nếu muốn tách tiếp, hoặc nhấn 'Hoàn tất'.");
+
+      splitPolygons = [res1, res2];
+      selectionForSplit = [];
+      updateSplitBtn();
+      isSelectingSplitLine = false;
+    }
+
+    function finishSplitProcess() {
+      if (!splitPolygons || splitPolygons.length < 2) return alert("Chưa thực hiện tách thửa!");
+      exportSplitPDF(splitPolygons);
+    }
+
+    function closeSplitPanel() {
+      document.getElementById('split-panel').style.display = 'none';
+      splitLayer.clearLayers();
+      areaLabelLayer.clearLayers();
+      if (highlightLayer) highlightLayer.clearLayers();
+      resetSplitState();
+      isSelectingSplitLine = false;
+      splitMode = false;
+      splitPolygons = [];
+
+      // Restore feature view
+      if (currentSelectedFeature) {
+        highlightLayer = L.geoJSON(currentSelectedFeature, {
+          style: {
+            color: "#dc3545", weight: 4, fillColor: "#0d6efd", fillOpacity: 0.2
+          }
+        }).addTo(map);
+
+        // Remove interactive markers
+        vertexLayer.clearLayers();
+        edgeLabelsLayer.clearLayers();
+      }
+    }
+
+    function exportSplitPDF(allParcels) {
+      const {
+        jsPDF
+      } = window.jspdf;
+      const doc = new jsPDF();
+
+      doc.setFontSize(16);
+
+      doc.text("SƠ ĐỒ TÁCH THỬA ĐẤT", 105, 20, {
+        align: 'center'
+      });
+
+      allParcels.forEach((parcel, idx) => {
+        const props = parcel.properties;
+        doc.setFontSize(12);
+
+        doc.text(`Thửa ${idx + 1}: Diện tích ${props.DIENTICH.toFixed(1)} m²`, 20, 40 + idx * 60);
+
+        const ordered = getOrderedVertices(parcel);
+        const tableData = ordered.map((pt, j) => [j + 1, pt.x.toFixed(3), pt.y.toFixed(3), '0.000']);
+
+        doc.autoTable({
+          head: [['STT', 'X (m)', 'Y (m)', 'Z (m)']],
+          body: tableData,
+          startY: 50 + idx * 60,
+          theme: 'grid'
+        });
+      });
+
+      doc.save(`TachThua_To_${currentSelectedFeature.properties.SHBANDO}_Thua_${currentSelectedFeature.properties.SHTHUA}.pdf`);
+    }
+
+  </script>
+</body>
+
+</html>
